@@ -1,0 +1,1679 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>네온 서바이벌 (Neon Survivor) - 무한 모드</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans KR', 'Orbitron', sans-serif;
+            touch-action: none;
+            overflow: hidden;
+            background-color: #030712;
+        }
+        .neon-text-blue {
+            text-shadow: 0 0 5px rgba(59, 130, 246, 0.5), 0 0 15px rgba(59, 130, 246, 0.7);
+        }
+        .neon-text-pink {
+            text-shadow: 0 0 5px rgba(236, 72, 153, 0.5), 0 0 15px rgba(236, 72, 153, 0.7);
+        }
+        .neon-border-blue {
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.5), inset 0 0 10px rgba(59, 130, 246, 0.3);
+        }
+        .neon-border-pink {
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.5), inset 0 0 10px rgba(236, 72, 153, 0.3);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex items-center justify-center select-none text-white">
+
+    <!-- 게임 컨테이너 -->
+    <div class="relative w-full h-full max-w-5xl max-h-[800px] md:rounded-2xl md:border-2 border-gray-800 bg-gray-950 overflow-hidden flex flex-col shadow-2xl">
+        
+        <!-- 캔버스 (게임 화면) -->
+        <canvas id="gameCanvas" class="absolute inset-0 w-full h-full block"></canvas>
+
+        <!-- 상단 HUD (체력 바, 경험치 바, 타이머, 스코어, 실시간 스탯) -->
+        <div id="hud" class="absolute top-0 inset-x-0 p-4 flex flex-col gap-2 pointer-events-none z-10 transition-opacity duration-300 opacity-0">
+            <!-- 경험치 바 -->
+            <div class="w-full h-3 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                <div id="xpBar" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 w-0 transition-all duration-100 shadow-[0_0_10px_rgba(34,211,238,0.5)]"></div>
+            </div>
+            
+            <!-- 정보 라인 -->
+            <div class="flex justify-between items-center px-1">
+                <!-- 레벨 & 난이도 & 체력 -->
+                <div class="flex items-center gap-3">
+                    <div class="text-xs font-bold bg-cyan-950 border border-cyan-500 text-cyan-400 px-3 py-1 rounded-full tracking-wider font-mono">
+                        LV.<span id="levelVal">1</span>
+                    </div>
+                    <!-- HUD 난이도 표시 배지 -->
+                    <div id="hudDiffBadge" class="text-[10px] font-bold bg-gray-900/90 border border-gray-700 px-2.5 py-1 rounded-full tracking-wider font-mono">
+                        NORMAL
+                    </div>
+                    <div class="flex items-center gap-2 w-28 md:w-44">
+                        <i class="fa-solid fa-heart text-rose-500 text-xs animate-pulse"></i>
+                        <div class="w-full h-2.5 bg-gray-900 rounded-full overflow-hidden border border-gray-800">
+                            <div id="hpBar" class="h-full bg-rose-600 w-full transition-all duration-100 shadow-[0_0_8px_rgba(225,29,72,0.5)]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 타이머 (가운데 정렬) -->
+                <div id="gameTimer" class="font-mono text-xl font-bold text-gray-100 tracking-wider">
+                    00:00
+                </div>
+
+                <!-- 사운드 토글 & 처치 점수 -->
+                <div class="flex items-center gap-4">
+                    <!-- 사운드 제어 버튼 -->
+                    <button id="soundToggleBtn" class="pointer-events-auto w-8 h-8 rounded-full bg-gray-900/80 border border-gray-700 flex items-center justify-center hover:bg-cyan-950 hover:border-cyan-500 transition-colors cursor-pointer text-cyan-400" title="사운드 켜기/끄기">
+                        <i id="soundIcon" class="fa-solid fa-volume-high"></i>
+                    </button>
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-skull text-pink-500"></i>
+                        <span id="killCount" class="font-mono text-sm font-bold text-gray-300">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 실시간 자동 강화 및 체력 재생 스탯 표시패널 -->
+            <div class="flex flex-wrap gap-3 mt-1 text-[10px] font-mono text-cyan-400/80 tracking-wide">
+                <div class="bg-gray-950/70 px-2 py-0.5 rounded border border-cyan-500/20 flex items-center gap-1">
+                    <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                    공격력: <span id="statDamage">100</span>%
+                </div>
+                <div class="bg-gray-950/70 px-2 py-0.5 rounded border border-cyan-500/20 flex items-center gap-1">
+                    <i class="fa-solid fa-gauge-high text-emerald-400"></i>
+                    이동속도: <span id="statSpeed">3.5</span>
+                </div>
+                <div class="bg-gray-950/70 px-2 py-0.5 rounded border border-cyan-500/20 flex items-center gap-1">
+                    <i class="fa-solid fa-bolt text-cyan-400 animate-pulse"></i>
+                    연사간격: <span id="statFireRate">100</span>%
+                </div>
+                <div class="bg-gray-950/70 px-2 py-0.5 rounded border border-rose-500/20 flex items-center gap-1">
+                    <i class="fa-solid fa-notes-medical text-rose-400 animate-pulse"></i>
+                    초당회복: +<span id="statRegen">0.5</span>/s
+                </div>
+            </div>
+        </div>
+
+        <!-- 메인 메뉴 (시작 화면) -->
+        <div id="startScreen" class="absolute inset-0 bg-gray-950/95 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300">
+            <div class="mb-6">
+                <h1 class="text-5xl md:text-7xl font-black tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-500 to-indigo-500 font-mono animate-pulse">
+                    NEON SURVIVOR
+                </h1>
+                <p class="text-xs md:text-sm text-yellow-400 mt-2 uppercase tracking-[0.2em] font-mono font-bold">★ 무한 강화 & 난이도 선택 업데이트 ★</p>
+            </div>
+
+            <!-- 난이도 선택 인터페이스 추가 -->
+            <div class="mb-6 w-full max-w-sm bg-gray-900/50 p-4 rounded-xl border border-gray-800">
+                <p class="text-xs text-cyan-400 font-bold uppercase tracking-[0.15em] mb-3">챌린지 난이도 선택</p>
+                <div class="grid grid-cols-3 gap-2" id="difficultySelector">
+                    <button data-difficulty="easy" class="py-2.5 rounded-lg border border-gray-800 bg-gray-950/60 text-gray-400 hover:text-white hover:border-emerald-500/50 text-xs font-bold transition-all font-mono tracking-wider">
+                        EASY
+                    </button>
+                    <!-- 기본값 NORMAL 선택 표시 -->
+                    <button data-difficulty="normal" class="py-2.5 rounded-lg border border-cyan-500 bg-cyan-950/40 text-cyan-400 text-xs font-bold transition-all font-mono tracking-wider shadow-[0_0_12px_rgba(34,211,238,0.25)]">
+                        NORMAL
+                    </button>
+                    <button data-difficulty="hard" class="py-2.5 rounded-lg border border-gray-800 bg-gray-950/60 text-gray-400 hover:text-white hover:border-rose-500/50 text-xs font-bold transition-all font-mono tracking-wider">
+                        HARD
+                    </button>
+                </div>
+                <p id="difficultyDesc" class="text-[11px] text-gray-400 mt-3 h-4">보통의 균형 잡힌 스폰 속도와 기본 성장률을 유지합니다.</p>
+            </div>
+
+            <div class="max-w-md bg-gray-900/40 p-4 rounded-xl border border-gray-800 backdrop-blur-md mb-6 flex flex-col gap-2">
+                <h3 class="font-bold text-cyan-400 text-sm tracking-wider">⚡ 무한 모드 & 회복 시스템</h3>
+                <div class="grid grid-cols-1 gap-1.5 text-[11px] text-gray-300 text-left font-sans">
+                    <div class="flex items-center gap-2 bg-gray-950/80 p-2 rounded border border-rose-500/20">
+                        <i class="fa-solid fa-heart-pulse text-rose-500 animate-pulse"></i>
+                        <span>드롭 하트 획득 및 초당 지속 자동 회복(Regen) 프로토콜 강화 가능!</span>
+                    </div>
+                    <div class="flex items-center gap-2 bg-gray-950/80 p-2 rounded border border-cyan-500/20">
+                        <i class="fa-solid fa-hourglass-half text-amber-400"></i>
+                        <span>30초가 경과할 때마다 기본 공격력과 이동 속도가 영구 무제한 상승!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 시작 버튼 -->
+            <button id="startBtn" class="px-8 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-lg rounded-xl shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all hover:scale-105 active:scale-95 duration-200 uppercase tracking-widest flex items-center gap-3">
+                <i class="fa-solid fa-play"></i> 무한 도전 시작하기
+            </button>
+        </div>
+
+        <!-- 레벨 업 화면 (보상 선택 모달) -->
+        <div id="levelUpScreen" class="absolute inset-0 bg-gray-950/90 flex flex-col items-center justify-center p-6 z-20 transition-all duration-300 opacity-0 pointer-events-none">
+            <h2 class="text-3xl md:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 to-amber-500 mb-2 font-mono tracking-wider animate-bounce">
+                LEVEL UP!
+            </h2>
+            <p class="text-xs text-gray-400 mb-1 uppercase tracking-widest">연구할 무기 또는 능력을 업그레이드 하세요</p>
+            <p id="levelUpBonusText" class="text-xs text-cyan-400 mb-6 font-mono font-semibold">[자동 강화 패시브 발동: 최대 체력 +5, 발사 딜레이 -2%]</p>
+
+            <!-- 카드 선택 영역 -->
+            <div id="upgradeCardsContainer" class="flex flex-col md:flex-row gap-4 w-full max-w-2xl justify-center items-stretch">
+                <!-- 동적으로 카드 삽입됨 -->
+            </div>
+        </div>
+
+        <!-- 게임 오버 화면 (무한모드에 맞춰 승리 연출 대신 최종 기록 중심 설계) -->
+        <div id="endScreen" class="absolute inset-0 bg-gray-950/95 flex flex-col items-center justify-center p-6 text-center z-20 transition-all duration-300 opacity-0 pointer-events-none">
+            <div id="endEmoji" class="text-6xl mb-4 animate-bounce">💀</div>
+            <h2 id="endTitle" class="text-4xl md:text-5xl font-black mb-2 tracking-widest font-mono text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-red-600">MISSION ENDED</h2>
+            <p id="endSub" class="text-xs text-rose-400 uppercase tracking-widest mb-6">무한의 차원 속에서 치열하게 무릎 꿇었습니다.</p>
+
+            <div class="grid grid-cols-2 gap-4 max-w-md w-full bg-gray-900/80 p-5 rounded-xl border border-gray-800 mb-8 font-mono">
+                <div>
+                    <div class="text-[10px] text-gray-500 uppercase">도전했던 난이도</div>
+                    <div id="finalDifficulty" class="text-lg font-bold text-cyan-400">NORMAL</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-gray-500 uppercase">최종 버틴 시간</div>
+                    <div id="finalTime" class="text-lg font-bold text-amber-400 font-mono">00:00</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-gray-500 uppercase">최종 달성 레벨</div>
+                    <div id="finalLevel" class="text-xl font-black text-cyan-300">1</div>
+                </div>
+                <div>
+                    <div class="text-[10px] text-gray-500 uppercase">처치한 적</div>
+                    <div id="finalKills" class="text-xl font-black text-pink-500">0</div>
+                </div>
+                <div class="col-span-2 border-t border-gray-800 pt-3 flex justify-center">
+                    <div>
+                        <span class="text-[10px] text-gray-500 uppercase">최종 공격력 증가 배율: </span>
+                        <span id="finalDmg" class="text-sm font-bold text-yellow-400">100%</span>
+                    </div>
+                </div>
+            </div>
+
+            <button id="retryBtn" class="px-8 py-3.5 bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-400 hover:to-rose-500 text-white font-extrabold text-lg rounded-xl shadow-[0_0_20px_rgba(236,72,153,0.4)] transition-all hover:scale-105 active:scale-95 duration-200 flex items-center gap-2">
+                <i class="fa-solid fa-rotate-right"></i> 무한 도전 다시하기
+            </button>
+        </div>
+
+        <!-- 일시정지 오버레이 -->
+        <div id="pauseScreen" class="absolute inset-0 bg-gray-950/85 flex flex-col items-center justify-center p-6 z-20 transition-all duration-300 opacity-0 pointer-events-none">
+            <h2 class="text-4xl font-extrabold text-white mb-6 tracking-widest font-mono">PAUSED</h2>
+            <button id="resumeBtn" class="px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-lg shadow-lg transition-all duration-150">
+                계속하기
+            </button>
+        </div>
+
+        <!-- 가상 조이스틱 터치용 조이스틱 영역 (모바일용) -->
+        <div id="joystickOuter" class="absolute bottom-12 left-12 w-24 h-24 bg-gray-800/20 border border-gray-500/30 rounded-full flex items-center justify-center pointer-events-none opacity-0 transition-opacity duration-300 z-10">
+            <div id="joystickInner" class="w-10 h-10 bg-cyan-500/60 rounded-full shadow-[0_0_10px_rgba(6,182,212,0.5)]"></div>
+        </div>
+
+    </div>
+
+    <!-- 사운드 엔진 스크립트 & 게임 메카닉스 -->
+    <script>
+        // --- 1. 오디오 신디사이저 (Web Audio API) ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.bgmInterval = null;
+                this.isMuted = false;
+                this.bgmSequenceStep = 0;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            }
+
+            toggleMute() {
+                this.isMuted = !this.isMuted;
+                const soundIcon = document.getElementById('soundIcon');
+                if (this.isMuted) {
+                    soundIcon.className = "fa-solid fa-volume-xmark text-rose-500 animate-pulse";
+                    this.stopBGM();
+                } else {
+                    soundIcon.className = "fa-solid fa-volume-high text-cyan-400";
+                    if (gameActive && !isPaused) {
+                        this.startBGM();
+                    }
+                }
+            }
+
+            // 실시간 백그라운드 뮤직 테크노 루프 발생기
+            startBGM() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                this.stopBGM();
+
+                const tempo = 132; // BPM
+                const stepTime = 60 / tempo / 2; // 8분 음표 기준 진행 속도
+
+                // 저음 베이스 네온 사운드 루프 주파수 테이블
+                const bassline = [110.00, 110.00, 130.81, 110.00, 146.83, 146.83, 130.81, 164.81]; // A2, C3, D3, E3 마이너 기반
+
+                this.bgmSequenceStep = 0;
+                this.bgmInterval = setInterval(() => {
+                    if (this.isMuted || !gameActive || isPaused) return;
+
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    const filter = this.ctx.createBiquadFilter();
+
+                    osc.type = 'sawtooth';
+                    // 베이스 주파수 연동
+                    osc.frequency.setValueAtTime(bassline[this.bgmSequenceStep % bassline.length], this.ctx.currentTime);
+
+                    // 아날로그 신스 느낌을 주기 위한 로우패스 필터
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(320, this.ctx.currentTime);
+
+                    // 아주 부드러운 하이햇 클릭음/베이스 타격감 연출
+                    gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + stepTime - 0.02);
+
+                    osc.connect(filter);
+                    filter.connect(gain);
+                    gain.connect(this.ctx.destination);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + stepTime);
+
+                    // 16비트 단위로 화려한 무작위 우주선 멜로디 오버레이음 재생 (2단계에 한번씩 랜덤)
+                    if (this.bgmSequenceStep % 8 === 0 && Math.random() > 0.4) {
+                        this.playLeadNote();
+                    }
+
+                    this.bgmSequenceStep++;
+                }, stepTime * 1000);
+            }
+
+            playLeadNote() {
+                if (this.isMuted || !this.ctx) return;
+                const leads = [440.00, 523.25, 587.33, 659.25, 783.99, 880.00]; // A4, C5, D5, E5 펜타토닉 음계
+                const freq = leads[Math.floor(Math.random() * leads.length)];
+                
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                
+                gain.gain.setValueAtTime(0.012, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.35);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.35);
+            }
+
+            stopBGM() {
+                if (this.bgmInterval) {
+                    clearInterval(this.bgmInterval);
+                    this.bgmInterval = null;
+                }
+            }
+
+            playShoot() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(120, this.ctx.currentTime + 0.1);
+                
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playExplode() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const bufferSize = this.ctx.sampleRate * 0.2;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = Math.random() * 2 - 1;
+                }
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(400, this.ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(10, this.ctx.currentTime + 0.2);
+
+                const gain = this.ctx.createGain();
+                gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.ctx.destination);
+
+                noise.start();
+                noise.stop(this.ctx.currentTime + 0.2);
+            }
+
+            playHurt() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+                osc.frequency.linearRampToValueAtTime(40, this.ctx.currentTime + 0.15);
+                
+                gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.15);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.15);
+            }
+
+            playLevelUp() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const notes = [261.63, 329.63, 392.00, 523.25]; // C-E-G-C 
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.08);
+                    
+                    gain.gain.setValueAtTime(0.06, this.ctx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.08 + 0.3);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    osc.start(this.ctx.currentTime + idx * 0.08);
+                    osc.stop(this.ctx.currentTime + idx * 0.08 + 0.3);
+                });
+            }
+
+            playSelect() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, this.ctx.currentTime); 
+                osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.1); 
+                
+                gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.1);
+                
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+
+            playAutoBoost() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(1000, this.ctx.currentTime + 0.25);
+                gain.gain.setValueAtTime(0.07, this.ctx.currentTime);
+                gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.25);
+            }
+
+            // 신성한 네온 힐링 드롭 사운드
+            playHeal() {
+                this.init();
+                if (this.isMuted || !this.ctx) return;
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5 - E5 - G5 - C6 초고속 오름차순 아르페지오
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.04);
+                    
+                    gain.gain.setValueAtTime(0.05, this.ctx.currentTime + idx * 0.04);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.04 + 0.2);
+                    
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    
+                    osc.start(this.ctx.currentTime + idx * 0.04);
+                    osc.stop(this.ctx.currentTime + idx * 0.04 + 0.2);
+                });
+            }
+        }
+
+        const sfx = new SoundEngine();
+
+        // --- 2. 게임 상태 및 데이터 정의 ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI 요소 취득
+        const hud = document.getElementById('hud');
+        const xpBar = document.getElementById('xpBar');
+        const hpBar = document.getElementById('hpBar');
+        const levelVal = document.getElementById('levelVal');
+        const hudDiffBadge = document.getElementById('hudDiffBadge');
+        const gameTimer = document.getElementById('gameTimer');
+        const killCount = document.getElementById('killCount');
+
+        const statDamage = document.getElementById('statDamage');
+        const statSpeed = document.getElementById('statSpeed');
+        const statFireRate = document.getElementById('statFireRate');
+        const statRegen = document.getElementById('statRegen');
+
+        const startScreen = document.getElementById('startScreen');
+        const startBtn = document.getElementById('startBtn');
+        const levelUpScreen = document.getElementById('levelUpScreen');
+        const upgradeCardsContainer = document.getElementById('upgradeCardsContainer');
+        const endScreen = document.getElementById('endScreen');
+        const endEmoji = document.getElementById('endEmoji');
+        const endTitle = document.getElementById('endTitle');
+        const endSub = document.getElementById('endSub');
+        const finalLevel = document.getElementById('finalLevel');
+        const finalTime = document.getElementById('finalTime');
+        const finalKills = document.getElementById('finalKills');
+        const finalDmg = document.getElementById('finalDmg');
+        const finalDifficulty = document.getElementById('finalDifficulty');
+        const retryBtn = document.getElementById('retryBtn');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const resumeBtn = document.getElementById('resumeBtn');
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        const difficultySelector = document.getElementById('difficultySelector');
+        const difficultyDesc = document.getElementById('difficultyDesc');
+
+        const joystickOuter = document.getElementById('joystickOuter');
+        const joystickInner = document.getElementById('joystickInner');
+
+        // 게임 설정 파라미터
+        let gameActive = false;
+        let isPaused = false;
+        let scale = 1;
+        let lastTime = 0;
+        let secondsElapsed = 0;
+        let timerInterval = null;
+
+        let screenShake = 0;
+
+        // 조이스틱 상태
+        let touchStartPos = null;
+        let touchMovePos = null;
+        let isTouching = false;
+
+        // 난이도 데이터 모델 정의
+        let currentDifficulty = 'normal';
+        const difficultySettings = {
+            easy: {
+                label: "EASY",
+                colorClass: "border-emerald-500 bg-emerald-950/40 text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.25)]",
+                textColor: "#10b981",
+                desc: "조금 더 느리게 다가오며 성장이 한결 수월하고, 기본 재생력이 상승합니다.",
+                spawnInterval: 800,
+                hpScaleFactor: 120,          // 숫자가 클수록 체력 가중치가 천천히 올라갑니다
+                enemySpeedMultiplier: 0.85,
+                baseRegen: 0.8,
+                dropHeartChance: 0.05
+            },
+            normal: {
+                label: "NORMAL",
+                colorClass: "border-cyan-500 bg-cyan-950/40 text-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.25)]",
+                textColor: "#22d3ee",
+                desc: "보통의 균형 잡힌 스폰 속도와 일반적인 성장 난이도를 유지합니다.",
+                spawnInterval: 650,
+                hpScaleFactor: 100,
+                enemySpeedMultiplier: 1.0,
+                baseRegen: 0.5,
+                dropHeartChance: 0.03
+            },
+            hard: {
+                label: "HARD",
+                colorClass: "border-rose-500 bg-rose-950/40 text-rose-400 shadow-[0_0_12px_rgba(244,63,94,0.25)]",
+                textColor: "#f43f5e",
+                desc: "기동력이 향상된 적들이 쏟아져 나오며, 기하급수적인 강화가 이뤄집니다. 자가 회복이 차단됩니다.",
+                spawnInterval: 480,
+                hpScaleFactor: 75,           // 매우 가파른 체력 인플레이션 스케일링
+                enemySpeedMultiplier: 1.15,
+                baseRegen: 0.1,
+                dropHeartChance: 0.015
+            }
+        };
+
+        // 플레이어 캐릭터 데이터 (체력 지속 회복 hpRegen 추가)
+        const player = {
+            x: 0,
+            y: 0,
+            radius: 12,
+            speed: 3.5,
+            hp: 100,
+            maxHp: 100,
+            level: 1,
+            xp: 0,
+            xpNeeded: 15,
+            damageMultiplier: 1.0,      
+            fireRateMultiplier: 1.0,    
+            hpRegen: 0.5,               
+            magnetRadius: 60,
+            bulletsCount: 1,
+            shieldCount: 0,
+            orbitalAngle: 0
+        };
+
+        // 수집 가능한 무기 및 업그레이드 정의 (나노 재생 프로토콜 추가)
+        const upgrades = {
+            weapon_blaster: { name: "네온 블래스터", desc: "가장 가까운 적에게 광선을 자동 발사합니다.", level: 1, maxLevel: 5, icon: "fa-crosshairs", color: "text-cyan-400" },
+            weapon_orbital: { name: "오비탈 디스크", desc: "플레이어 주변을 휘도는 죽음의 궤도 무기입니다.", level: 0, maxLevel: 5, icon: "fa-arrows-spin", color: "text-pink-400" },
+            weapon_pulse: { name: "플라즈마 오라", desc: "일정 주기마다 강력한 파장을 일으켜 광범위 타격을 줍니다.", level: 0, maxLevel: 5, icon: "fa-wave-square", color: "text-emerald-400" },
+            stat_maxhp: { name: "자가 치유 장치", desc: "최대 체력이 증가하고 잃은 체력을 즉시 30 회복합니다.", level: 0, maxLevel: 5, icon: "fa-shield-halved", color: "text-rose-400" },
+            stat_regen: { name: "나노 재생 프로토콜", desc: "초당 체력 자동 회복 스탯(HP Regen)을 1.2씩 고속 증가시킵니다.", level: 0, maxLevel: 5, icon: "fa-square-plus", color: "text-rose-500" },
+            stat_speed: { name: "오버드라이브 부스트", desc: "기동 속도가 증가하여 적으로부터 쉽게 회피합니다.", level: 0, maxLevel: 5, icon: "fa-bolt", color: "text-yellow-400" },
+            stat_magnet: { name: "중력 파동 자석", desc: "멀리 있는 경험치 결정체를 수집하는 궤도가 넓어집니다.", level: 0, maxLevel: 5, icon: "fa-circle-dot", color: "text-purple-400" }
+        };
+
+        // 공격 쿨다운 조절용 타이머들
+        let weaponCooldowns = {
+            blaster: 0,
+            pulse: 0
+        };
+
+        // 엔티티 컬렉션
+        let enemies = [];
+        let bullets = [];
+        let crystals = [];
+        let hearts = []; // 드롭 하트 아이템 컬렉션
+        let particles = [];
+        let damageTexts = [];
+        let totalKills = 0;
+
+        // 입력 조작 상태
+        const keys = {};
+
+        // 캔버스 크기 조정
+        function resize() {
+            const rect = canvas.parentNode.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- 2.5 난이도 선택 이벤트 리스너 ---
+        difficultySelector.addEventListener('click', (e) => {
+            const targetButton = e.target.closest('button[data-difficulty]');
+            if (!targetButton) return;
+
+            sfx.playSelect();
+            const selectedDiff = targetButton.getAttribute('data-difficulty');
+            currentDifficulty = selectedDiff;
+
+            // 전체 난이도 버튼 UI 초기화 및 타겟 하이라이트
+            Array.from(difficultySelector.children).forEach(btn => {
+                btn.className = "py-2.5 rounded-lg border border-gray-800 bg-gray-950/60 text-gray-400 hover:text-white text-xs font-bold transition-all font-mono tracking-wider";
+            });
+
+            const config = difficultySettings[selectedDiff];
+            targetButton.className = `py-2.5 rounded-lg border text-xs font-bold transition-all font-mono tracking-wider ${config.colorClass}`;
+            difficultyDesc.innerText = config.desc;
+        });
+
+        // --- 3. 컨트롤 바인딩 ---
+        window.addEventListener('keydown', e => {
+            keys[e.key.toLowerCase()] = true;
+            if (e.key === 'p' || e.key === 'escape') {
+                togglePause();
+            }
+        });
+        window.addEventListener('keyup', e => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        // 모바일 터치 이벤트 컨트롤
+        window.addEventListener('touchstart', e => {
+            if (!gameActive || isPaused) return;
+            const touch = e.touches[0];
+            touchStartPos = { x: touch.clientX, y: touch.clientY };
+            touchMovePos = { x: touch.clientX, y: touch.clientY };
+            isTouching = true;
+
+            joystickOuter.style.opacity = '1';
+            joystickOuter.style.left = `${touch.clientX - 48}px`;
+            joystickOuter.style.bottom = `${window.innerHeight - touch.clientY - 48}px`;
+            joystickInner.style.transform = `translate(0px, 0px)`;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', e => {
+            if (!isTouching) return;
+            const touch = e.touches[0];
+            touchMovePos = { x: touch.clientX, y: touch.clientY };
+
+            const dx = touchMovePos.x - touchStartPos.x;
+            const dy = touchMovePos.y - touchStartPos.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxDist = 48;
+
+            let moveX = dx;
+            let moveY = dy;
+            if (dist > maxDist) {
+                moveX = (dx / dist) * maxDist;
+                moveY = (dy / dist) * maxDist;
+            }
+
+            joystickInner.style.transform = `translate(${moveX}px, ${moveY}px)`;
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+            isTouching = false;
+            joystickOuter.style.opacity = '0';
+            touchStartPos = null;
+            touchMovePos = null;
+        });
+
+        let mouseX = 0, mouseY = 0;
+        window.addEventListener('mousemove', e => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        // --- 4. 헬퍼 클래스 및 수학 연산 ---
+        class Vector {
+            static getDirection(from, to) {
+                const dx = to.x - from.x;
+                const dy = to.y - from.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                return dist === 0 ? { x: 0, y: 0 } : { x: dx / dist, y: dy / dist };
+            }
+        }
+
+        function createExplosion(x, y, color, count = 12) {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = Math.random() * 3 + 1;
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: Math.random() * 3 + 1,
+                    alpha: 1,
+                    decay: Math.random() * 0.03 + 0.02,
+                    color: color
+                });
+            }
+        }
+
+        function createCrystal(x, y, amount) {
+            crystals.push({
+                x: x,
+                y: y,
+                amount: amount,
+                radius: 6,
+                color: '#22d3ee', 
+                isAttracted: false
+            });
+        }
+
+        // 필드 드롭 하트 생성 함수
+        function createDropHeart(x, y, healAmount = 25) {
+            hearts.push({
+                x: x,
+                y: y,
+                radius: 9,
+                healAmount: healAmount,
+                color: '#f43f5e', // 피치핑크 레드
+                isAttracted: false,
+                pulseScale: 1.0,
+                pulseSpeed: 0.1
+            });
+        }
+
+        function createDamageText(x, y, text, color = '#f43f5e', scale = 1.0) {
+            damageTexts.push({
+                x: x,
+                y: y,
+                text: text,
+                color: color,
+                alpha: 1,
+                vy: -Math.random() * 1.5 - 1.0,
+                scale: scale,
+                life: 30
+            });
+        }
+
+        // --- 5. 무기 투사체 생성 로직 ---
+        function fireBlaster() {
+            if (enemies.length === 0) return;
+            
+            let target = null;
+            let minDist = Infinity;
+            enemies.forEach(enemy => {
+                const dx = enemy.x - player.x;
+                const dy = enemy.y - player.y;
+                const dist = dx * dx + dy * dy;
+                if (dist < minDist) {
+                    minDist = dist;
+                    target = enemy;
+                }
+            });
+
+            if (!target) return;
+
+            const dir = Vector.getDirection(player, target);
+            const count = upgrades.weapon_blaster.level; 
+
+            sfx.playShoot();
+
+            for (let i = 0; i < count; i++) {
+                const spreadAngle = (i - (count - 1) / 2) * 0.15;
+                const cos = Math.cos(spreadAngle);
+                const sin = Math.sin(spreadAngle);
+                const vx = dir.x * cos - dir.y * sin;
+                const vy = dir.x * sin + dir.y * cos;
+
+                bullets.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: vx * 8,
+                    vy: vy * 8,
+                    radius: 5,
+                    damage: 15 * player.damageMultiplier,
+                    color: '#22d3ee',
+                    piercing: 1
+                });
+            }
+        }
+
+        function firePulse() {
+            const radius = 90 + (upgrades.weapon_pulse.level * 20);
+            const damage = 25 * player.damageMultiplier * upgrades.weapon_pulse.level;
+            
+            for (let angle = 0; angle < Math.PI * 2; angle += 0.25) {
+                particles.push({
+                    x: player.x,
+                    y: player.y,
+                    vx: Math.cos(angle) * 4,
+                    vy: Math.sin(angle) * 4,
+                    radius: 4,
+                    alpha: 0.8,
+                    decay: 0.04,
+                    color: '#34d399' 
+                });
+            }
+
+            sfx.playShoot();
+
+            enemies.forEach(enemy => {
+                const dx = enemy.x - player.x;
+                const dy = enemy.y - player.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < radius) {
+                    enemy.hp -= damage;
+                    createDamageText(enemy.x, enemy.y, Math.round(damage), '#10b981', 1.3);
+                    
+                    const dir = Vector.getDirection(player, enemy);
+                    enemy.x += dir.x * 20;
+                    enemy.y += dir.y * 20;
+                }
+            });
+        }
+
+        // --- 6. 적 생성 오케스트라 (선택된 난이도 기반 동적 튜닝) ---
+        function spawnEnemy() {
+            if (!gameActive || isPaused) return;
+
+            if (enemies.length > 250) return;
+
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.max(canvas.width, canvas.height) * 0.7;
+            const x = player.x + Math.cos(angle) * dist;
+            const y = player.y + Math.sin(angle) * dist;
+
+            const typeProb = Math.random();
+            let hp = 25;
+            let speed = 1.2 + Math.random() * 0.5;
+            let size = 10;
+            let color = '#ec4899'; 
+            let xpAmount = 1;
+            let isElite = false;
+            let isBoss = false;
+
+            // 난이도 설정 가져오기
+            const currentSetting = difficultySettings[currentDifficulty];
+
+            // 시간 경과에 따른 정예/보스 출현 속도
+            if (secondsElapsed > 120 && typeProb < 0.08) {
+                hp = 1200;
+                speed = 0.8;
+                size = 32;
+                color = '#e11d48'; 
+                xpAmount = 30;
+                isBoss = true;
+            } else if (secondsElapsed > 45 && typeProb < 0.20) {
+                hp = 150;
+                speed = 0.9;
+                size = 18;
+                color = '#f59e0b'; 
+                xpAmount = 5;
+                isElite = true;
+            } else if (secondsElapsed > 90 && typeProb < 0.45) {
+                hp = 12;
+                speed = 2.5;
+                size = 7;
+                color = '#a855f7'; 
+                xpAmount = 1.5;
+            }
+
+            // 난이도별 속도 배율 대입
+            speed *= currentSetting.enemySpeedMultiplier;
+
+            // 난이도에 따른 성장 한계 계산 (체력 누적 스케일링)
+            const difficultyMultiplier = 1 + (secondsElapsed / currentSetting.hpScaleFactor);
+            hp *= difficultyMultiplier;
+
+            enemies.push({
+                x: x,
+                y: y,
+                hp: hp,
+                maxHp: hp,
+                speed: speed,
+                radius: size,
+                color: color,
+                xpAmount: xpAmount,
+                isElite: isElite,
+                isBoss: isBoss
+            });
+        }
+
+        // --- 7. 레벨업 시 자동 패시브 강화 및 수동 선택 ---
+        function triggerLevelUp() {
+            isPaused = true;
+            sfx.playLevelUp();
+            
+            // 레벨업 기본 스탯 보정
+            player.maxHp += 5;                         
+            player.hp = Math.min(player.maxHp, player.hp + 10); 
+            player.fireRateMultiplier *= 0.98;         
+
+            updateHUD();
+
+            const availableList = [];
+            Object.keys(upgrades).forEach(key => {
+                const upgrade = upgrades[key];
+                if (upgrade.level < upgrade.maxLevel) {
+                    availableList.push({ key: key, ...upgrade });
+                }
+            });
+
+            if (availableList.length === 0) {
+                player.hp = Math.min(player.maxHp, player.hp + 50);
+                createDamageText(player.x, player.y - 20, "한계 초월: 체력 회복!", "#eab308", 1.5);
+                updateHUD();
+                isPaused = false;
+                return;
+            }
+
+            const selection = [];
+            while (selection.length < Math.min(3, availableList.length)) {
+                const randIdx = Math.floor(Math.random() * availableList.length);
+                const item = availableList[randIdx];
+                if (!selection.find(s => s.key === item.key)) {
+                    selection.push(item);
+                }
+            }
+
+            upgradeCardsContainer.innerHTML = '';
+            selection.forEach(upg => {
+                const nextLvl = upg.level + 1;
+                const card = document.createElement('div');
+                card.className = "flex-1 flex flex-col justify-between items-center bg-gray-900 border-2 border-gray-800 hover:border-cyan-500 rounded-2xl p-6 text-center cursor-pointer transition-all hover:scale-[1.03] active:scale-[0.98] duration-200 shadow-lg group";
+                
+                card.innerHTML = `
+                    <div class="flex flex-col items-center">
+                        <div class="w-16 h-16 rounded-full bg-gray-950 flex items-center justify-center mb-4 border border-gray-800 group-hover:border-cyan-500/50 transition-colors">
+                            <i class="fa-solid ${upg.icon} text-2xl ${upg.color}"></i>
+                        </div>
+                        <h3 class="font-bold text-lg mb-1 group-hover:text-cyan-400 transition-colors">${upg.name}</h3>
+                        <div class="text-[11px] font-mono bg-cyan-950/40 text-cyan-400 px-2 py-0.5 rounded-full mb-3 border border-cyan-800/50">
+                            LEVEL ${nextLvl} ${nextLvl === upg.maxLevel ? '(MAX)' : ''}
+                        </div>
+                        <p class="text-xs text-gray-400 leading-relaxed">${upg.desc}</p>
+                    </div>
+                    <button class="mt-6 w-full py-2.5 bg-gray-950 hover:bg-cyan-500 hover:text-white border border-gray-800 group-hover:border-cyan-500/50 rounded-lg text-xs font-bold transition-all uppercase tracking-widest text-cyan-400">
+                        선택하기
+                    </button>
+                `;
+
+                card.addEventListener('click', () => {
+                    applyUpgrade(upg.key);
+                });
+
+                upgradeCardsContainer.appendChild(card);
+            });
+
+            levelUpScreen.classList.remove('opacity-0', 'pointer-events-none');
+        }
+
+        function applyUpgrade(key) {
+            upgrades[key].level++;
+            sfx.playSelect();
+
+            if (key === 'weapon_orbital') {
+                player.shieldCount = upgrades.weapon_orbital.level;
+            } else if (key === 'stat_maxhp') {
+                player.maxHp += 20;
+                player.hp = Math.min(player.maxHp, player.hp + 30);
+            } else if (key === 'stat_regen') {
+                player.hpRegen += 1.2; // 초당 1.2씩 재생량 증가
+            } else if (key === 'stat_speed') {
+                player.speed += 0.5;
+            } else if (key === 'stat_magnet') {
+                player.magnetRadius += 25;
+            }
+
+            levelUpScreen.classList.add('opacity-0', 'pointer-events-none');
+            isPaused = false;
+            updateHUD();
+        }
+
+        // --- 8. HUD 업데이트 헬퍼 ---
+        function updateHUD() {
+            xpBar.style.width = `${(player.xp / player.xpNeeded) * 100}%`;
+            hpBar.style.width = `${Math.max(0, (player.hp / player.maxHp) * 100)}%`;
+            levelVal.innerText = player.level;
+            killCount.innerText = totalKills;
+
+            // HUD 난이도 뱃지 텍스트 및 컬러 설정 동기화
+            const config = difficultySettings[currentDifficulty];
+            hudDiffBadge.innerText = config.label;
+            hudDiffBadge.style.borderColor = config.textColor;
+            hudDiffBadge.style.color = config.textColor;
+
+            statDamage.innerText = Math.round(player.damageMultiplier * 100);
+            statSpeed.innerText = player.speed.toFixed(1);
+            statFireRate.innerText = Math.round(player.fireRateMultiplier * 100);
+            statRegen.innerText = player.hpRegen.toFixed(1);
+        }
+
+        function formatTime(secs) {
+            const mins = Math.floor(secs / 60);
+            const remain = secs % 60;
+            return `${mins.toString().padStart(2, '0')}:${remain.toString().padStart(2, '0')}`;
+        }
+
+        // --- 9. 코어 게임 루프 ---
+        function update(dt) {
+            if (!gameActive || isPaused) return;
+
+            if (screenShake > 0) screenShake -= 1;
+
+            // 1. 초당 지속 체력 자동 회복 (HP Regen)
+            if (player.hp < player.maxHp) {
+                player.hp = Math.min(player.maxHp, player.hp + player.hpRegen * (dt / 1000));
+                updateHUD();
+            }
+
+            // 2. 플레이어 이동 제어
+            let mx = 0;
+            let my = 0;
+
+            if (isTouching && touchStartPos && touchMovePos) {
+                const dx = touchMovePos.x - touchStartPos.x;
+                const dy = touchMovePos.y - touchStartPos.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist > 5) {
+                    mx = dx / dist;
+                    my = dy / dist;
+                }
+            } else {
+                if (keys['w'] || keys['arrowup']) my -= 1;
+                if (keys['s'] || keys['arrowdown']) my += 1;
+                if (keys['a'] || keys['arrowleft']) mx -= 1;
+                if (keys['d'] || keys['arrowright']) mx += 1;
+
+                const len = Math.sqrt(mx * mx + my * my);
+                if (len > 0) {
+                    mx /= len;
+                    my /= len;
+                }
+            }
+
+            player.x += mx * player.speed;
+            player.y += my * player.speed;
+
+            player.x = Math.max(player.radius, Math.min(canvas.width - player.radius, player.x));
+            player.y = Math.max(player.radius, Math.min(canvas.height - player.radius, player.y));
+            
+            player.orbitalAngle += 0.04;
+
+            // 3. 무기 발사 주기 체크 및 발사
+            if (upgrades.weapon_blaster.level > 0) {
+                weaponCooldowns.blaster += dt;
+                const rate = (1200 / (1 + (upgrades.weapon_blaster.level * 0.15))) * player.fireRateMultiplier;
+                if (weaponCooldowns.blaster >= rate) {
+                    fireBlaster();
+                    weaponCooldowns.blaster = 0;
+                }
+            }
+            if (upgrades.weapon_pulse.level > 0) {
+                weaponCooldowns.pulse += dt;
+                const rate = 3500 * player.fireRateMultiplier;
+                if (weaponCooldowns.pulse >= rate) {
+                    firePulse();
+                    weaponCooldowns.pulse = 0;
+                }
+            }
+
+            // 4. 투사체(총알) 업데이트
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.x += b.vx;
+                b.y += b.vy;
+
+                if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    const dx = b.x - enemy.x;
+                    const dy = b.y - enemy.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < b.radius + enemy.radius) {
+                        enemy.hp -= b.damage;
+                        createDamageText(enemy.x, enemy.y, Math.round(b.damage), '#22d3ee');
+                        
+                        b.piercing--;
+                        if (b.piercing <= 0) {
+                            bullets.splice(i, 1);
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 5. 오비탈 실드 충돌 검사
+            if (player.shieldCount > 0) {
+                for (let i = 0; i < player.shieldCount; i++) {
+                    const offsetAngle = (Math.PI * 2 / player.shieldCount) * i;
+                    const currentAngle = player.orbitalAngle + offsetAngle;
+                    const shieldX = player.x + Math.cos(currentAngle) * 65;
+                    const shieldY = player.y + Math.sin(currentAngle) * 65;
+
+                    enemies.forEach(enemy => {
+                        const dx = shieldX - enemy.x;
+                        const dy = shieldY - enemy.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < 10 + enemy.radius) {
+                            const dmg = 0.8 * player.damageMultiplier * upgrades.weapon_orbital.level;
+                            enemy.hp -= dmg;
+                            
+                            const dir = Vector.getDirection(player, enemy);
+                            enemy.x += dir.x * 0.8;
+                            enemy.y += dir.y * 0.8;
+                        }
+                    });
+                }
+            }
+
+            // 6. 적 업데이트 (인공지능 이동 및 충돌)
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+
+                const dir = Vector.getDirection(enemy, player);
+                enemy.x += dir.x * enemy.speed;
+                enemy.y += dir.y * enemy.speed;
+
+                const pDist = Math.sqrt((enemy.x - player.x) * (enemy.x - player.x) + (enemy.y - player.y) * (enemy.y - player.y));
+                if (pDist < enemy.radius + player.radius) {
+                    player.hp -= 0.6; 
+                    screenShake = 6;
+                    
+                    if (Math.random() < 0.1) {
+                        sfx.playHurt();
+                    }
+
+                    if (player.hp <= 0) {
+                        triggerGameOver(false);
+                        return;
+                    }
+                    updateHUD();
+                }
+
+                if (enemy.hp <= 0) {
+                    createExplosion(enemy.x, enemy.y, enemy.color);
+                    createCrystal(enemy.x, enemy.y, enemy.xpAmount);
+                    
+                    // 난이도별 설정에 따른 드롭 하트 획득 확률 제어
+                    const currentSetting = difficultySettings[currentDifficulty];
+                    let dropChance = currentSetting.dropHeartChance;
+                    if (enemy.isBoss) dropChance = 1.0;
+                    else if (enemy.isElite) dropChance = 0.5;
+
+                    if (Math.random() < dropChance) {
+                        createDropHeart(enemy.x, enemy.y, enemy.isBoss ? 50 : 25);
+                    }
+
+                    sfx.playExplode();
+                    enemies.splice(i, 1);
+                    totalKills++;
+                    updateHUD();
+                    continue;
+                }
+            }
+
+            // 7. 네온 하트 아이템 수집 및 끌어당김
+            for (let i = hearts.length - 1; i >= 0; i--) {
+                const h = hearts[i];
+                const dx = player.x - h.x;
+                const dy = player.y - h.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                // 하트 펄스 크기 애니메이션
+                h.pulseScale += h.pulseSpeed;
+                if (h.pulseScale > 1.2 || h.pulseScale < 0.8) {
+                    h.pulseSpeed = -h.pulseSpeed;
+                }
+
+                // 자석 수집 범위
+                if (dist < player.magnetRadius) {
+                    h.isAttracted = true;
+                }
+
+                if (h.isAttracted) {
+                    const dir = Vector.getDirection(h, player);
+                    h.x += dir.x * 8;
+                    h.y += dir.y * 8;
+                }
+
+                // 하트 획득 성공 시
+                if (dist < player.radius + h.radius) {
+                    player.hp = Math.min(player.maxHp, player.hp + h.healAmount);
+                    createDamageText(player.x, player.y - 15, `+${h.healAmount} HP`, '#10b981', 1.3);
+                    sfx.playHeal();
+                    hearts.splice(i, 1);
+                    updateHUD();
+                }
+            }
+
+            // 8. 경험치 보석 가동 및 수집
+            for (let i = crystals.length - 1; i >= 0; i--) {
+                const c = crystals[i];
+                const dx = player.x - c.x;
+                const dy = player.y - c.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist < player.magnetRadius) {
+                    c.isAttracted = true;
+                }
+
+                if (c.isAttracted) {
+                    const dir = Vector.getDirection(c, player);
+                    c.x += dir.x * 8;
+                    c.y += dir.y * 8;
+                }
+
+                if (dist < player.radius + c.radius) {
+                    player.xp += c.amount;
+                    crystals.splice(i, 1);
+
+                    if (player.xp >= player.xpNeeded) {
+                        player.xp -= player.xpNeeded;
+                        player.level++;
+                        player.xpNeeded = Math.round(player.xpNeeded * 1.5);
+                        triggerLevelUp();
+                    }
+                    updateHUD();
+                }
+            }
+
+            // 9. 파티클 업데이트
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            // 10. 데미지 텍스트 업데이트
+            for (let i = damageTexts.length - 1; i >= 0; i--) {
+                const d = damageTexts[i];
+                d.y += d.vy;
+                d.life--;
+                if (d.life <= 0) {
+                    damageTexts.splice(i, 1);
+                }
+            }
+        }
+
+        // --- 10. 그래픽 및 캔버스 그리기 ---
+        function draw() {
+            ctx.save();
+            if (screenShake > 0) {
+                const dx = (Math.random() - 0.5) * screenShake;
+                const dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+            }
+
+            ctx.fillStyle = '#030712'; 
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            drawGrid();
+
+            // 1. 경험치 보석 결정 그리기
+            crystals.forEach(c => {
+                ctx.save();
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = c.color;
+                ctx.fillStyle = c.color;
+                
+                ctx.beginPath();
+                ctx.moveTo(c.x, c.y - c.radius);
+                ctx.lineTo(c.x + c.radius, c.y);
+                ctx.lineTo(c.x, c.y + c.radius);
+                ctx.lineTo(c.x - c.radius, c.y);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 2. 드롭형 네온 하트 그리기
+            hearts.forEach(h => {
+                ctx.save();
+                ctx.shadowBlur = 15;
+                ctx.shadowColor = h.color;
+                ctx.fillStyle = h.color;
+                drawHeartCanvas(ctx, h.x, h.y, h.radius * 2 * h.pulseScale, h.radius * 2 * h.pulseScale);
+                ctx.restore();
+            });
+
+            // 3. 적 캐릭터 렌더링
+            enemies.forEach(enemy => {
+                ctx.save();
+                ctx.shadowBlur = enemy.isBoss ? 25 : (enemy.isElite ? 15 : 8);
+                ctx.shadowColor = enemy.color;
+                ctx.fillStyle = enemy.color;
+
+                ctx.beginPath();
+                if (enemy.isBoss) {
+                    drawPolygon(enemy.x, enemy.y, enemy.radius, 6);
+                } else if (enemy.isElite) {
+                    drawPolygon(enemy.x, enemy.y, enemy.radius, 4);
+                } else {
+                    ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+                }
+                ctx.fill();
+
+                if (enemy.isBoss || enemy.hp < enemy.maxHp) {
+                    const barW = enemy.radius * 2;
+                    const barH = 4;
+                    ctx.fillStyle = '#111827';
+                    ctx.fillRect(enemy.x - barW / 2, enemy.y - enemy.radius - 8, barW, barH);
+                    
+                    const ratio = Math.max(0, enemy.hp / enemy.maxHp);
+                    ctx.fillStyle = enemy.isBoss ? '#f43f5e' : '#eab308';
+                    ctx.fillRect(enemy.x - barW / 2, enemy.y - enemy.radius - 8, barW * ratio, barH);
+                }
+                ctx.restore();
+            });
+
+            // 4. 투사체(총알) 그리기
+            bullets.forEach(b => {
+                ctx.save();
+                ctx.shadowBlur = 8;
+                ctx.shadowColor = b.color;
+                ctx.fillStyle = b.color;
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 5. 오비탈 실드 장치 그리기
+            if (player.shieldCount > 0) {
+                for (let i = 0; i < player.shieldCount; i++) {
+                    const offsetAngle = (Math.PI * 2 / player.shieldCount) * i;
+                    const currentAngle = player.orbitalAngle + offsetAngle;
+                    const shieldX = player.x + Math.cos(currentAngle) * 65;
+                    const shieldY = player.y + Math.sin(currentAngle) * 65;
+
+                    ctx.save();
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = '#f472b6'; 
+                    ctx.fillStyle = '#f472b6';
+                    ctx.beginPath();
+                    ctx.arc(shieldX, shieldY, 8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = 'rgba(244,114,182,0.15)';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(player.x, player.y);
+                    ctx.lineTo(shieldX, shieldY);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            // 6. 플레이어 그리기
+            ctx.save();
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#22d3ee'; 
+            ctx.fillStyle = '#22d3ee';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = 'rgba(34,211,238,0.06)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.magnetRadius, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.restore();
+
+            // 7. 파티클 이펙트 그리기
+            particles.forEach(p => {
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.shadowBlur = 5;
+                ctx.shadowColor = p.color;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            });
+
+            // 8. 플로팅 데미지 및 힐링 텍스트 출력
+            damageTexts.forEach(d => {
+                ctx.save();
+                ctx.globalAlpha = d.life / 30;
+                ctx.fillStyle = d.color;
+                ctx.font = `bold ${Math.round(14 * d.scale)}px 'Orbitron', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 4;
+                ctx.shadowColor = 'black';
+                ctx.fillText(d.text, d.x, d.y);
+                ctx.restore();
+            });
+
+            ctx.restore(); 
+        }
+
+        function drawPolygon(x, y, radius, sides) {
+            ctx.beginPath();
+            for (let i = 0; i < sides; i++) {
+                const angle = (Math.PI * 2 / sides) * i;
+                const px = x + Math.cos(angle) * radius;
+                const py = y + Math.sin(angle) * radius;
+                if (i === 0) ctx.moveTo(px, py);
+                else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+        }
+
+        // 정밀하고 아름다운 네온 하트 그리기 도우미 함수
+        function drawHeartCanvas(ctx, x, y, width, height) {
+            ctx.beginPath();
+            const topCurveHeight = height * 0.3;
+            ctx.moveTo(x, y + topCurveHeight);
+            ctx.bezierCurveTo(
+                x - width / 2, y - topCurveHeight / 2,
+                x - width / 2, y + (height + topCurveHeight) / 2,
+                x, y + height
+            );
+            ctx.bezierCurveTo(
+                x + width / 2, y + (height + topCurveHeight) / 2,
+                x + width / 2, y - topCurveHeight / 2,
+                x, y + topCurveHeight
+            );
+            ctx.closePath();
+            ctx.fill();
+        }
+
+        function drawGrid() {
+            const gridSize = 45;
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+            ctx.lineWidth = 1;
+
+            const offsetX = -(player.x % gridSize);
+            const offsetY = -(player.y % gridSize);
+
+            for (let x = offsetX; x < canvas.width; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = offsetY; y < canvas.height; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+                ctx.stroke();
+            }
+        }
+
+        // --- 11. 메인 엔진 제어 시스템 ---
+        let mainLoopId = null;
+        let spawnIntervalId = null;
+
+        function runGame(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            const dt = timestamp - lastTime;
+            lastTime = timestamp;
+
+            const safeDt = Math.min(dt, 100);
+
+            update(safeDt);
+            draw();
+
+            if (gameActive) {
+                mainLoopId = requestAnimationFrame(runGame);
+            }
+        }
+
+        function triggerGameOver(isWinner = false) {
+            gameActive = false;
+            cancelAnimationFrame(mainLoopId);
+            clearInterval(spawnIntervalId);
+            clearInterval(timerInterval);
+            sfx.stopBGM();
+
+            finalLevel.innerText = player.level;
+            finalTime.innerText = formatTime(secondsElapsed);
+            finalKills.innerText = totalKills;
+            finalDmg.innerText = `${Math.round(player.damageMultiplier * 100)}%`;
+            
+            // 결과 창에 도전한 난이도를 라벨과 색상으로 명확하게 기록
+            const config = difficultySettings[currentDifficulty];
+            finalDifficulty.innerText = config.label;
+            finalDifficulty.style.color = config.textColor;
+
+            endEmoji.innerText = "💀";
+            endTitle.innerText = "MISSION ENDED";
+            endTitle.className = "text-4xl md:text-5xl font-black mb-2 tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-rose-500 to-red-600 font-mono";
+            endSub.innerText = `총 ${formatTime(secondsElapsed)} 동안 치열한 무한 차원 생존을 기록했습니다.`;
+            endSub.className = "text-xs text-rose-500 uppercase tracking-widest mb-8";
+
+            endScreen.classList.remove('opacity-0', 'pointer-events-none');
+            hud.classList.add('opacity-0');
+        }
+
+        function togglePause() {
+            if (!gameActive) return;
+            isPaused = !isPaused;
+            if (isPaused) {
+                pauseScreen.classList.remove('opacity-0', 'pointer-events-none');
+                clearInterval(timerInterval);
+                sfx.stopBGM();
+            } else {
+                pauseScreen.classList.add('opacity-0', 'pointer-events-none');
+                startTimer();
+                sfx.startBGM();
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (isPaused) return;
+                secondsElapsed++;
+                gameTimer.innerText = formatTime(secondsElapsed);
+
+                if (secondsElapsed % 30 === 0) {
+                    applyAutoStrengthening();
+                }
+            }, 1000);
+        }
+
+        function applyAutoStrengthening() {
+            player.damageMultiplier += 0.05; 
+            player.speed += 0.1;            
+            
+            sfx.playAutoBoost();
+            createDamageText(player.x, player.y - 30, "🔥 시간 보너스: 오버클럭 발동 (공격력+5%, 속도UP!)", "#f59e0b", 1.2);
+            
+            updateHUD();
+        }
+
+        function resetGame() {
+            enemies = [];
+            bullets = [];
+            crystals = [];
+            hearts = [];
+            particles = [];
+            damageTexts = [];
+            totalKills = 0;
+            secondsElapsed = 0;
+            lastTime = 0;
+            screenShake = 0;
+
+            const config = difficultySettings[currentDifficulty];
+
+            player.x = canvas.width / 2;
+            player.y = canvas.height / 2;
+            player.hp = 100;
+            player.maxHp = 100;
+            player.level = 1;
+            player.xp = 0;
+            player.xpNeeded = 15;
+            player.speed = 3.5;
+            player.damageMultiplier = 1.0;
+            player.fireRateMultiplier = 1.0;
+            
+            // 난이도별 기본 초당 자동 치유 적용
+            player.hpRegen = config.baseRegen; 
+
+            player.magnetRadius = 60;
+            player.bulletsCount = 1;
+            player.shieldCount = 0;
+            player.orbitalAngle = 0;
+
+            Object.keys(upgrades).forEach(key => {
+                if (key === 'weapon_blaster') {
+                    upgrades[key].level = 1;
+                } else {
+                    upgrades[key].level = 0;
+                }
+            });
+
+            weaponCooldowns.blaster = 0;
+            weaponCooldowns.pulse = 0;
+
+            gameTimer.innerText = "00:00";
+            updateHUD();
+        }
+
+        // --- 12. 최상단 이벤트 연동 ---
+        startBtn.addEventListener('click', () => {
+            sfx.playSelect();
+            startScreen.classList.add('opacity-0', 'pointer-events-none');
+            hud.classList.remove('opacity-0');
+            
+            gameActive = true;
+            isPaused = false;
+            resetGame();
+            startTimer();
+            sfx.startBGM(); // 사운드 개시
+
+            clearInterval(spawnIntervalId);
+            // 난이도별 스폰 인터벌 연동
+            const interval = difficultySettings[currentDifficulty].spawnInterval;
+            spawnIntervalId = setInterval(spawnEnemy, interval);
+
+            requestAnimationFrame(runGame);
+        });
+
+        retryBtn.addEventListener('click', () => {
+            sfx.playSelect();
+            endScreen.classList.add('opacity-0', 'pointer-events-none');
+            hud.classList.remove('opacity-0');
+
+            gameActive = true;
+            isPaused = false;
+            resetGame();
+            startTimer();
+            sfx.startBGM(); // 사운드 개시
+
+            clearInterval(spawnIntervalId);
+            const interval = difficultySettings[currentDifficulty].spawnInterval;
+            spawnIntervalId = setInterval(spawnEnemy, interval);
+
+            requestAnimationFrame(runGame);
+        });
+
+        resumeBtn.addEventListener('click', () => {
+            togglePause();
+        });
+
+        // 사운드 뮤트 버튼 이벤트 핸들러
+        soundToggleBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sfx.toggleMute();
+        });
+
+    </script>
+</body>
+</html>
